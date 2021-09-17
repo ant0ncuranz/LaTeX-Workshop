@@ -182,7 +182,7 @@ export class Viewer {
             this.extension.logger.displayStatus('check', 'statusBar.foreground', `Cannot view file PDF file. File not found: ${pdfFile}`, 'warning')
             return
         }
-        const url = `http://127.0.0.1:${this.extension.server.port}/viewer.html?file=${encodePathWithPrefix(pdfFile)}`
+		const url = `${this.extension.server.url}/viewer.html?file=${encodePathWithPrefix(pdfFile)}`
         this.extension.logger.addLogMessage(`Serving PDF file at ${url}`)
         this.extension.logger.addLogMessage(`The encoded path is ${pdfFile}`)
         return url
@@ -280,17 +280,13 @@ export class Viewer {
      * @param pdfFile The path of a PDF file to be opened.
      */
     async getPDFViewerContent(pdfFile: string): Promise<string> {
-        const serverPort = this.extension.server.port
         // viewer/viewer.js automatically requests the file to server.ts, and server.ts decodes the encoded path of PDF file.
-        const origUrl = `http://127.0.0.1:${serverPort}/viewer.html?incode=1&file=${encodePathWithPrefix(pdfFile)}`
-        const url = await vscode.env.asExternalUri(vscode.Uri.parse(origUrl))
-        const iframeSrcOrigin = `${url.scheme}://${url.authority}`
-        const iframeSrcUrl = url.toString(true)
-        this.extension.logger.addLogMessage(`The internal PDF viewer url: ${iframeSrcUrl}`)
+		const url = `${this.extension.server.url}/viewer.html?incode=1&file=${encodePathWithPrefix(pdfFile)}`
+        this.extension.logger.addLogMessage(`The internal PDF viewer url: ${url}`)
         const rebroadcast: boolean = this.getKeyboardEventConfig()
         return `
-            <!DOCTYPE html><html><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; frame-src ${iframeSrcOrigin}; script-src 'unsafe-inline'; style-src 'unsafe-inline';"></head>
-            <body><iframe id="preview-panel" class="preview-panel" src="${iframeSrcUrl}" style="position:absolute; border: none; left: 0; top: 0; width: 100%; height: 100%;">
+			<!DOCTYPE html><html><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; frame-src ${this.extension.server.url}; script-src 'unsafe-inline'; style-src 'unsafe-inline';"></head>
+            <body><iframe id="preview-panel" class="preview-panel" src="${url}" style="position:absolute; border: none; left: 0; top: 0; width: 100%; height: 100%;">
             </iframe>
             <script>
             // When the tab gets focus again later, move the
@@ -307,7 +303,7 @@ export class Viewer {
             // we have to dispatch keyboard events in the parent window.
             // See https://github.com/microsoft/vscode/issues/65452#issuecomment-586036474
             window.addEventListener('message', (e) => {
-                if (e.origin !== '${iframeSrcOrigin}') {
+                if (e.origin !== '${this.extension.server.url}') {
                     return;
                 }
                 switch (e.data.type) {
@@ -315,7 +311,7 @@ export class Viewer {
                         const state = vsStore.getState();
                         if (state) {
                             state.type = 'restore_state';
-                            iframe.contentWindow.postMessage(state, '${iframeSrcOrigin}');
+                            iframe.contentWindow.postMessage(state, '${url}');
                         }
                         break;
                     }

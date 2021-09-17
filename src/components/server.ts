@@ -40,16 +40,19 @@ export class Server {
     private readonly extension: Extension
     private readonly httpServer: http.Server
     private address?: AddressInfo
+	url?: string
 
     constructor(extension: Extension) {
         this.extension = extension
         this.httpServer = http.createServer((request, response) => this.handler(request, response))
         const configuration = vscode.workspace.getConfiguration('latex-workshop')
-        const viewerPort = configuration.get('viewer.pdf.internal.port') as number
+		const viewerPort = configuration.get('viewer.pdf.internal.port') as number
+		const viewerURL = configuration.get('viewer.pdf.internal.url') as string
         this.httpServer.listen(viewerPort, '127.0.0.1', undefined, () => {
             const address = this.httpServer.address()
             if (address && typeof address !== 'string') {
                 this.address = address
+				this.url = viewerURL.replace('%p', this.port.toString())
                 this.extension.logger.addLogMessage(`[Server] Server successfully started: ${JSON.stringify(address)}`)
                 this.initializeWsServer()
             } else {
@@ -72,7 +75,7 @@ export class Server {
     }
 
     private get validOrigin(): string {
-        return `http://127.0.0.1:${this.port}`
+        return this.url ?? `http://127.0.0.1:${this.port}`
     }
 
     private initializeWsServer() {

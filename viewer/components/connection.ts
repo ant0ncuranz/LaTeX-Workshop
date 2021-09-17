@@ -19,7 +19,7 @@ export class WebSocketPort implements IConnectionPort {
 
     constructor(lwApp: ILatexWorkshopPdfViewer) {
         this.lwApp = lwApp
-        const server = `ws://${window.location.hostname}:${window.location.port}`
+		const server = `${window.location.protocol=='https:' ? 'wss:' : 'ws:'}//${window.location.hostname}:${window.location.port}`
         this.server = server
         this.socket = new Promise((resolve, reject) => {
             const sock = new WebSocket(server)
